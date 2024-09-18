@@ -1,0 +1,8 @@
+services:
+  notebooks:
+    build: .
+    ports: 
+      - "8888:8888"
+    volumes:
+      - ./data:/app/data
+      - ./src:/app/src

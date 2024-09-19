@@ -106,7 +106,16 @@ class ETL:
           row = [line[start:end].strip() for var, start, end in fields]
           csvout.writerow(row)
     
-  def get_station_list(df: pd.DataFrame, lat: List[float], lon: List[float], US: bool = False) -> List[str]:
+  def get_station_df(self, file) -> pd.DataFrame:
+    station_df = pd.read_fwf(
+      file,
+      header=None,
+      names=["ID", "lat", "long", "elev", "city", "unk1", "unk2", "unk3"],
+    )
+
+    return station_df
+    
+  def get_station_list(self, df: pd.DataFrame, lat: List[float], lon: List[float], US: bool = False) -> List[str]:
     # df is the weather station dataframe created from txt file provided by NOAA
     # lat is a list of lattitude range (max length 2) with element 0 being the minimum and 1 being the max
     # lon is a list of longitude range (max length 2) with element 0 being the minimum and 1 being the max
@@ -131,7 +140,7 @@ class ETL:
 
     return station_lst
   
-  def combine_stations(path: str, stations: List[str]) -> pd.DataFrame:
+  def combine_stations(self, path: str, stations: List[str]) -> pd.DataFrame:
     # path is file path where files are located
 
     # all files creates list of csv files within path folder
@@ -149,7 +158,7 @@ class ETL:
 
     return weather_df
   
-  def filter_weather(df: pd.DataFrame, min_year: int = None, max_year: int = None, filtword: str = None) -> pd.DataFrame:
+  def filter_weather(self, df: pd.DataFrame, min_year: int = None, max_year: int = None, filtword: str = None) -> pd.DataFrame:
     # min year is the first year of desired data and max year is final year. One can be left blank if getting data up to or starting from a year. Year is type integer
     # filtword is the filter word (string) used to drop columns. If left none than no columns are dropped
 
@@ -172,7 +181,7 @@ class ETL:
 
     return final_df
   
-  def get_pivotdf(df: pd.DataFrame) -> pd.DataFrame:
+  def get_pivotdf(self, df: pd.DataFrame) -> pd.DataFrame:
     values = df.columns.tolist()[4:]
     indcols = df.columns.tolist()[:4]
 
@@ -195,7 +204,7 @@ class ETL:
 
     return pivot_df
   
-  def fill_missing(df: pd.DataFrame, limit: int = 7) -> pd.DataFrame:
+  def fill_missing(self, df: pd.DataFrame, limit: int = 7) -> pd.DataFrame:
     # limit is how many days prior to fill in missing values
 
     # get list of stations
@@ -211,7 +220,7 @@ class ETL:
 
     return final_df
   
-  def date_cleanup(df: pd.DataFrame) -> pd.DataFrame:
+  def date_cleanup(self, df: pd.DataFrame) -> pd.DataFrame:
     df2 = df.copy()
     months = [2, 4, 6, 9, 11]
     days = [31]
@@ -262,7 +271,7 @@ class ETL:
 
     return df2[cols]
   
-  def add_location(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+  def add_location(self, df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     # df1 is the stations dataframe generated from the txt document
     # df2 is the cleaned up weather dataframe
     final_stations_l = df2.ID.unique().tolist()
@@ -279,6 +288,10 @@ class ETL:
     df_final = df_final.rename(columns={"lat": "latitude", "long": "longitude"})
 
     return df_final.sort_values(by=["ID", "DATE"])
+  
+  def generate_weather(self):
+    station_df = self.get_station_list()
+    
   
   def run(self, balance_sheet:bool, dly_convert:bool, create_weather: bool) -> None:
     if balance_sheet:

@@ -74,11 +74,42 @@ class ETL:
         .bfill(axis=0)
     master_df.to_csv("../../data/balance_sheet.csv", index=False)\\
     
+  def dly_convert(self) -> None:
+    fields = [
+      ["ID", 1, 11],
+      ["YEAR", 12, 15],
+      ["MONTH", 16, 17],
+      ["ELEMENT", 18, 21]
+    ]
     
-  def run(self, balance_sheet:bool, dly:bool) -> None:
+    offset = 22
+    
+    for value in range(1, 32):
+      fields.append((f"VALUE{value}", offset,     offset + 4))
+      fields.append((f"MFLAG{value}", offset + 5, offset + 5))
+      fields.append((f"QFLAG{value}", offset + 6, offset + 6))
+      fields.append((f"SFLAG{value}", offset + 7, offset + 7))
+      offset += 8
+    
+    # Modify fields to use Python numbering
+    fields = [[var, start - 1, end] for var, start, end in fields]
+    fieldnames = [var for var, start, end in fields]
+    for dly_filename in glob.glob(r'../../data/ghcnd_hcn/*.dly', recursive=True): 
+      path, name = os.path.split(dly_filename)
+      csv_filename = os.path.join(path, f"{os.path.splitext(name)[0]}.csv")
+
+      with open(dly_filename, newline='') as f_dly, open(csv_filename, 'w', newline='') as f_csv:
+        csvout = csv.writer(f_csv)
+        csvout.writerow(fieldnames)    # Write a header using the var names
+
+        for line in f_dly:
+          row = [line[start:end].strip() for var, start, end in fields]
+          csvout.writerow(row)
+    
+  def run(self, balance_sheet:bool, dly_convert:bool) -> None:
     if balance_sheet:
       self.balance_sheets()
       
     # TODO
-    if dly:
-      pass
+    if dly_convert:
+      self.dly_convert()

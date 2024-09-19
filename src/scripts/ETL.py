@@ -106,10 +106,187 @@ class ETL:
           row = [line[start:end].strip() for var, start, end in fields]
           csvout.writerow(row)
     
-  def run(self, balance_sheet:bool, dly_convert:bool) -> None:
+  def get_station_list(df: pd.DataFrame, lat: List[float], lon: List[float], US: bool = False) -> List[str]:
+    # df is the weather station dataframe created from txt file provided by NOAA
+    # lat is a list of lattitude range (max length 2) with element 0 being the minimum and 1 being the max
+    # lon is a list of longitude range (max length 2) with element 0 being the minimum and 1 being the max
+    # set US to true to return only US listed weather stations
+
+    if len(lat) > 2:
+        return "Error you can only have 2 values for lattitude"
+    if len(lon) > 2:
+        return "Error you can only have 2 values for longitude"
+
+    station_df = df[
+        (df.lat >= lat[0])
+        & (df.lat <= lat[1])
+        & (df.long >= lon[0])
+        & (df.long <= lon[1])
+    ]
+
+    if US:
+        station_df = station_df.loc[station_df["ID"].str.contains("US")]
+
+    station_lst = station_df.ID.tolist()
+
+    return station_lst
+  
+  def combine_stations(path: str, stations: List[str]) -> pd.DataFrame:
+    # path is file path where files are located
+
+    # all files creates list of csv files within path folder
+    all_files = glob.glob(os.path.join(path, "*.csv"))
+
+    df_list = []
+    # iterate creating dfs for each csv to get all US weather stations
+    for file in all_files:
+        df = pd.read_csv(file, index_col=None, header=0, low_memory=False)
+        df = df[df["ID"].isin(stations)]
+        if len(df) > 0:
+            df_list.append(df)
+
+    weather_df = pd.concat(df_list, axis=0, ignore_index=True)
+
+    return weather_df
+  
+  def filter_weather(df: pd.DataFrame, min_year: int = None, max_year: int = None, filtword: str = None) -> pd.DataFrame:
+    # min year is the first year of desired data and max year is final year. One can be left blank if getting data up to or starting from a year. Year is type integer
+    # filtword is the filter word (string) used to drop columns. If left none than no columns are dropped
+
+    if filtword:
+      col_list = df.columns.tolist()
+      newcols = []
+      for col in col_list:
+          if filtword not in col:
+              newcols.append(col)
+    else:
+      newcols = df.columns.tolist()
+
+    final_df = df[newcols]
+
+    if min_year:
+      final_df = final_df[final_df.YEAR >= min_year]
+
+    if max_year:
+      final_df = final_df[final_df.YEAR <= max_year]
+
+    return final_df
+  
+  def get_pivotdf(df: pd.DataFrame) -> pd.DataFrame:
+    values = df.columns.tolist()[4:]
+    indcols = df.columns.tolist()[:4]
+
+    melt_df = pd.melt(df, id_vars=indcols, value_vars=values, var_name="DAY")
+
+    pivot_df = pd.pivot_table(
+      melt_df,
+      values="value",
+      index=["ID", "YEAR", "MONTH", "DAY"],
+      columns="ELEMENT",
+      aggfunc="first",
+    ).reset_index()
+    pivot_df["DAY"] = pivot_df["DAY"].str.replace(r"\D", "", regex=True).astype(int)
+    pivot_df = pivot_df.sort_values(by=["YEAR", "MONTH", "DAY"])
+    pivot_df.columns.name = None
+    pivot_df = pivot_df \
+      .replace(-9999.0, np.nan) \
+      .dropna(how="all", axis=0) \
+      .dropna(how="all", axis=1)
+
+    return pivot_df
+  
+  def fill_missing(df: pd.DataFrame, limit: int = 7) -> pd.DataFrame:
+    # limit is how many days prior to fill in missing values
+
+    # get list of stations
+    stations = df["ID"].unique().tolist()
+    dfs = []
+    for station in stations:
+      res = df[df["ID"] == station]
+      res = res.ffill(limit=limit)
+      res = res.bfill(limit=limit)
+      dfs.append(res)
+
+    final_df = pd.concat(dfs, axis=0, ignore_index=True)
+
+    return final_df
+  
+  def date_cleanup(df: pd.DataFrame) -> pd.DataFrame:
+    df2 = df.copy()
+    months = [2, 4, 6, 9, 11]
+    days = [31]
+
+    # make list of indices where 30 months have 31 days
+    inds = df2[(df2["MONTH"].isin(months)) & (df2["DAY"].isin(days))].index.tolist()
+
+    # add indices where february should only have 28 days and 29 days
+    month = [2]
+    leap_years = [2016, 2020, 2024]
+    non_leap = [2015, 2017, 2018, 2019, 2021, 2022, 2023]
+    noleapdays = [29, 30]
+    leapday = [30]
+
+    l_inds = df2[
+        (df2["MONTH"].isin(month))
+        & (df2["YEAR"].isin(leap_years))
+        & (df2["DAY"].isin(leapday))
+    ].index.tolist()
+
+    nol_inds = df2[
+        (df2["MONTH"].isin(month))
+        & (df2["YEAR"].isin(non_leap))
+        & (df2["DAY"].isin(noleapdays))
+    ].index.tolist()
+
+    inds_final = inds + l_inds + nol_inds
+
+    # drop rows with days that shouldn't exist for months with 30 days and february accordingly
+    df2.drop(inds_final, inplace=True)
+
+    # create new date column and convert to date time
+    df2["DATE"] = (
+        df2["MONTH"].astype(str)
+        + "/"
+        + df2["DAY"].astype(str)
+        + "/"
+        + df2["YEAR"].astype(str)
+    )
+
+    df2["DATE"] = pd.to_datetime(df2["DATE"]).dt.date
+
+    # reorder columns to show new date column and omit year month and day columns
+    features = df2.columns.tolist()[4:-1]
+    ids = df2.columns.tolist()[:1]
+    ids.append("DATE")
+    cols = ids + features
+
+    return df2[cols]
+  
+  def add_location(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    # df1 is the stations dataframe generated from the txt document
+    # df2 is the cleaned up weather dataframe
+    final_stations_l = df2.ID.unique().tolist()
+
+    df1 = df1[df1["ID"].isin(final_stations_l)]
+    df1 = df1[["ID", "city", "lat", "long", "elev"]]
+
+    df_final = df2.merge(df1, left_on="ID", right_on="ID")
+
+    cols = df_final.columns.tolist()
+    cols_f = cols[:2] + cols[22:] + cols[2:22]
+
+    df_final = df_final[cols_f]
+    df_final = df_final.rename(columns={"lat": "latitude", "long": "longitude"})
+
+    return df_final.sort_values(by=["ID", "DATE"])
+  
+  def run(self, balance_sheet:bool, dly_convert:bool, create_weather: bool) -> None:
     if balance_sheet:
       self.balance_sheets()
       
     # TODO
     if dly_convert:
       self.dly_convert()
+      
+    if create_weather:
+      self.generate_weather()

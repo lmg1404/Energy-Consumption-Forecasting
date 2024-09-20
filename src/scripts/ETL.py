@@ -79,7 +79,7 @@ class ETL:
     threshold = 0.8
     pattern = r'\([^()]*\)|\b(from|at|of)\b'
     print("  Extracting .CSV's")
-    dfs = self._extract_csvs(2016, 2024)
+    dfs = self._extract_csvs()
     dfs = self._check_columns(dfs)
     print("  Concatenating DataFrames and Fixing Columns")
     master_df = pd.concat(dfs, axis=0, ignore_index=True)

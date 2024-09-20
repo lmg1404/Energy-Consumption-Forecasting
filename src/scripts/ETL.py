@@ -14,11 +14,27 @@ import re
 import glob
 import csv
 
+MI_LAT = [41.50, 47.50]
+MI_LONG = [-90.5, -82.5]
+
+
+class ETLConfig:
+  def __init__(self, **kwargs):
+    for key, value in kwargs.items():
+      setattr(self, key, value)
+
+  def __getattr__(self, name):
+    return None
+
 class ETL:
-  def __init__(self):
-    pass
+  def __init__(self, config):
+    self.start_year = config.start_year
+    self.end_year = config.end_year
+    self.data_path = config.data_path
+    self.station_file = config.station_file
+    self.ghcd_path = config.ghcd_path
   
-  def _check_columns(dataframes: pd.DataFrame) -> List[pd.DataFrame]:
+  def _check_columns(self, dataframes: pd.DataFrame) -> List[pd.DataFrame]:
     col_hash = defaultdict(list)
     for df in dataframes:
         col_len = len(df.columns)
@@ -36,9 +52,9 @@ class ETL:
             del col_hash[min_col]
     return col_hash[max_col]
   
-  def _extract_csvs(start: int, end: int) -> List[pd.DataFrame]:
+  def _extract_csvs(self) -> List[pd.DataFrame]:
     dfs = []
-    for year in range(start, end+1):
+    for year in range(self.start_year, self.end_year+1):
         firsthalf_link = f"https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/EIA930_BALANCE_{year}_Jan_Jun.csv"
         sechalf_link = f"https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/EIA930_BALANCE_{year}_Jul_Dec.csv"
         
@@ -62,8 +78,10 @@ class ETL:
   def balance_sheets(self) -> None:
     threshold = 0.8
     pattern = r'\([^()]*\)|\b(from|at|of)\b'
+    print("  Extracting .CSV's")
     dfs = self._extract_csvs(2016, 2024)
     dfs = self._check_columns(dfs)
+    print("  Concatenating DataFrames and Fixing Columns")
     master_df = pd.concat(dfs, axis=0, ignore_index=True)
     master_df.columns = ["_".join(re.sub(pattern, '', col).lower().split()) for col in master_df.columns]
     master_df["local_time_end_hour"] = pd.to_datetime(master_df["local_time_end_hour"])
@@ -72,7 +90,8 @@ class ETL:
         .dropna(axis=1, thresh=int(len(master_df) * (1-threshold))) \
         .dropna(axis=0, thresh=7) \
         .bfill(axis=0)
-    master_df.to_csv("../../data/balance_sheet.csv", index=False)\\
+    print("  Saved to a .CSV as balance_sheet.csv")
+    master_df.to_csv(os.path.join(self.data_path, "balance_sheet.csv"), index=False)
     
   def dly_convert(self) -> None:
     fields = [
@@ -94,7 +113,7 @@ class ETL:
     # Modify fields to use Python numbering
     fields = [[var, start - 1, end] for var, start, end in fields]
     fieldnames = [var for var, start, end in fields]
-    for dly_filename in glob.glob(r'../../data/ghcnd_hcn/*.dly', recursive=True): 
+    for dly_filename in glob.glob(os.path.join(self.ghcd_path, '*.dly'), recursive=True): 
       path, name = os.path.split(dly_filename)
       csv_filename = os.path.join(path, f"{os.path.splitext(name)[0]}.csv")
 
@@ -106,9 +125,9 @@ class ETL:
           row = [line[start:end].strip() for var, start, end in fields]
           csvout.writerow(row)
     
-  def get_station_df(self, file) -> pd.DataFrame:
+  def get_station_df(self) -> pd.DataFrame:
     station_df = pd.read_fwf(
-      file,
+      self.station_file,
       header=None,
       names=["ID", "lat", "long", "elev", "city", "unk1", "unk2", "unk3"],
     )
@@ -140,11 +159,11 @@ class ETL:
 
     return station_lst
   
-  def combine_stations(self, path: str, stations: List[str]) -> pd.DataFrame:
+  def combine_stations(self, stations: List[str]) -> pd.DataFrame:
     # path is file path where files are located
 
     # all files creates list of csv files within path folder
-    all_files = glob.glob(os.path.join(path, "*.csv"))
+    all_files = glob.glob(os.path.join(self.ghcd_path, "*.csv"))
 
     df_list = []
     # iterate creating dfs for each csv to get all US weather stations
@@ -158,7 +177,7 @@ class ETL:
 
     return weather_df
   
-  def filter_weather(self, df: pd.DataFrame, min_year: int = None, max_year: int = None, filtword: str = None) -> pd.DataFrame:
+  def filter_weather(self, df: pd.DataFrame, filtword: str = None) -> pd.DataFrame:
     # min year is the first year of desired data and max year is final year. One can be left blank if getting data up to or starting from a year. Year is type integer
     # filtword is the filter word (string) used to drop columns. If left none than no columns are dropped
 
@@ -173,11 +192,11 @@ class ETL:
 
     final_df = df[newcols]
 
-    if min_year:
-      final_df = final_df[final_df.YEAR >= min_year]
+    if self.start_year:
+      final_df = final_df[final_df.YEAR >= self.start_year]
 
-    if max_year:
-      final_df = final_df[final_df.YEAR <= max_year]
+    if self.end_year:
+      final_df = final_df[final_df.YEAR <= self.end_year]
 
     return final_df
   
@@ -289,17 +308,34 @@ class ETL:
 
     return df_final.sort_values(by=["ID", "DATE"])
   
-  def generate_weather(self):
-    station_df = self.get_station_list()
-    
+  def generate_weather(self) -> None:
+    print("  Getting Relevant Stations")
+    station_df = self.get_station_df()
+    stations = self.get_station_list(station_df, MI_LAT, MI_LONG, True)
+    print("  Combining Stations")
+    weather_df = self.combine_stations(stations)
+    print("  Filtering Weather")
+    weather_df = self.filter_weather(weather_df, "FLAG")
+    weather_df = self.get_pivotdf(weather_df)
+    print("  Cleaning Operations")
+    weather_df = self.fill_missing(weather_df)
+    weather_df = self.date_cleanup(weather_df)
+    weather_df = self.add_location(station_df, weather_df)
+    weather_df.to_csv(os.path.join(self.data_path, "WeatherReport.csv"), index=False)
   
-  def run(self, balance_sheet:bool, dly_convert:bool, create_weather: bool) -> None:
+  def run(self, balance_sheet: bool, dly_convert: bool, create_weather: bool) -> None:
     if balance_sheet:
+      print("Starting Balance Sheet Processing")
       self.balance_sheets()
       
-    # TODO
     if dly_convert:
+      print("Starting .DLY Converts")
       self.dly_convert()
       
     if create_weather:
+      print("Generating a Weather Report")
       self.generate_weather()
+      
+if __name__ == "__main__":
+  etl = ETL()
+  ETL.run(True, False, True)

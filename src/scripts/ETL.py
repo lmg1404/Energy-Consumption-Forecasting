@@ -17,7 +17,6 @@ import csv
 MI_LAT = [41.50, 47.50]
 MI_LONG = [-90.5, -82.5]
 
-
 class ETLConfig:
   def __init__(self, **kwargs):
     for key, value in kwargs.items():
@@ -92,7 +91,11 @@ class ETL:
         .bfill(axis=0)
     print("  Saved to a .CSV as balance_sheet.csv")
     master_df.to_csv(os.path.join(self.data_path, "balance_sheet.csv"), index=False)
-    
+  
+  # -----------------------
+  #     M1 Code Start
+  # -----------------------
+  
   def dly_convert(self) -> None:
     fields = [
       ["ID", 1, 11],
@@ -308,6 +311,10 @@ class ETL:
 
     return df_final.sort_values(by=["ID", "DATE"])
   
+  # -----------------------
+  #     M1 Code End
+  # -----------------------  
+  
   def generate_weather(self) -> None:
     print("  Getting Relevant Stations")
     station_df = self.get_station_df()
@@ -336,6 +343,3 @@ class ETL:
       print("Generating a Weather Report")
       self.generate_weather()
       
-if __name__ == "__main__":
-  etl = ETL()
-  ETL.run(True, False, True)

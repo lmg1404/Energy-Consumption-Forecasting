@@ -343,3 +343,4 @@ class ETL:
       print("Generating a Weather Report")
       self.generate_weather()
       
+  

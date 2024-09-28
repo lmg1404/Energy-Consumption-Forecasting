@@ -5,6 +5,7 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
+  - _py-xgboost-mutex=2.0=gpu_0
   - aiohappyeyeballs=2.4.0=py310h06a4308_0
   - aiohttp=3.10.5=py310h5eee18b_0
   - aiosignal=1.2.0=pyhd3eb1b0_0
@@ -53,9 +54,11 @@ dependencies:
   - charset-normalizer=3.3.2=pyhd3eb1b0_0
   - click=8.1.7=unix_pyh707e725_0
   - cloudpickle=3.0.0=py310h06a4308_0
+  - colorama=0.4.6=py310h06a4308_0
   - comm=0.2.1=py310h06a4308_0
   - contourpy=1.2.0=py310hdb19cb5_0
   - cryptography=43.0.0=py310hdda0065_0
+  - cuda-version=11.8=hcce14f8_3
   - cycler=0.11.0=pyhd3eb1b0_0
   - cyrus-sasl=2.1.28=h52b45da_1
   - databricks-sdk=0.32.1=pyhd8ed1ab_0
@@ -154,12 +157,13 @@ dependencies:
   - libsodium=1.0.18=h7b6447c_0
   - libssh2=1.10.0=ha35d2d1_2
   - libstdcxx=14.1.0=hc0a3c3a_1
-  - libstdcxx-ng=11.2.0=h1234567_1
+  - libstdcxx-ng=14.1.0=h4852527_1
   - libthrift=0.15.0=h1795dd8_2
   - libtiff=4.5.1=h6a678d5_0
   - libuuid=1.41.5=h5eee18b_0
   - libwebp-base=1.3.2=h5eee18b_0
   - libxcb=1.15=h7f8727e_0
+  - libxgboost=2.1.1=cuda118_h09a87be_3
   - libxkbcommon=1.0.1=h097e994_2
   - libxml2=2.13.1=hfdd30dd_2
   - lz4-c=1.9.4=h6a678d5_1
@@ -183,6 +187,7 @@ dependencies:
   - nbclient=0.8.0=py310h06a4308_0
   - nbconvert=7.10.0=py310h06a4308_0
   - nbformat=5.9.2=py310h06a4308_0
+  - nccl=2.22.3.1=hee583db_1
   - ncurses=6.4=h6a678d5_0
   - nest-asyncio=1.6.0=py310h06a4308_0
   - notebook=7.2.2=py310h06a4308_0
@@ -219,6 +224,7 @@ dependencies:
   - psutil=6.0.0=py310ha75aee5_1
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
+  - py-xgboost=2.1.1=cuda118_pyh41db038_3
   - pyarrow=16.1.0=py310h1128e8f_0
   - pyasn1=0.4.8=pyhd3eb1b0_0
   - pyasn1-modules=0.2.8=py_0
@@ -253,14 +259,12 @@ dependencies:
   - rpds-py=0.20.0=py310h505e2c1_1
   - rsa=4.7.2=pyhd3eb1b0_1
   - s2n=1.3.27=h1b5e8cb_0
-  - scikit-base=0.8.2=pyhecae5ae_0
   - scikit-learn=1.5.1=py310h1128e8f_0
   - scipy=1.13.1=py310h5f9d8c6_0
   - send2trash=1.8.2=py310h06a4308_0
   - setuptools=72.1.0=py310h06a4308_0
   - sip=6.7.12=py310h6a678d5_0
   - six=1.16.0=pyhd3eb1b0_1
-  - sktime=0.32.4=py310hff52083_0
   - smmap=4.0.0=pyhd3eb1b0_0
   - snappy=1.2.1=h6a678d5_0
   - sniffio=1.3.0=py310h06a4308_0
@@ -278,6 +282,7 @@ dependencies:
   - tk=8.6.14=h39e8969_0
   - tomli=2.0.1=py310h06a4308_0
   - tornado=6.4.1=py310h5eee18b_0
+  - tqdm=4.66.5=pyhd8ed1ab_0
   - traitlets=5.14.3=py310h06a4308_0
   - typing-extensions=4.12.2=hd8ed1ab_0
   - typing_extensions=4.12.2=pyha770c72_0
@@ -295,6 +300,7 @@ dependencies:
   - wheel=0.44.0=py310h06a4308_0
   - widgetsnbextension=4.0.10=py310h06a4308_0
   - wrapt=1.14.1=py310h5eee18b_0
+  - xgboost=2.1.1=cuda118_pyh256f914_3
   - xyzservices=2024.9.0=pyhd8ed1ab_0
   - xz=5.4.6=h5eee18b_1
   - yaml=0.2.5=h7b6447c_0
@@ -303,4 +309,7 @@ dependencies:
   - zipp=3.20.2=pyhd8ed1ab_0
   - zlib=1.2.13=h5eee18b_1
   - zstd=1.5.5=hc292b87_2
-prefix: /home/luismg0203/miniconda3/envs/forecasting
+  - pip:
+      - colorlog==6.8.2
+      - optuna==4.0.0
+      - skforecast==0.13.0

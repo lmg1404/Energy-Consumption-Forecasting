@@ -91,11 +91,11 @@ class ETL:
         .bfill(axis=0)
     print("  Saved to a .CSV as balance_sheet.csv")
     master_df.to_csv(os.path.join(self.data_path, "balance_sheet.csv"), index=False)
-  
+
   # -----------------------
   #     M1 Code Start
   # -----------------------
-  
+
   def dly_convert(self) -> None:
     fields = [
       ["ID", 1, 11],

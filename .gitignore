@@ -1,4 +1,6 @@
 data/*
+!data/miso.geojson
+!data/ghcnd-version.txt
 forecasting/*
 
 # Byte-compiled / optimized / DLL files

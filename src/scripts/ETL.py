@@ -4,6 +4,8 @@ Should put .csvs into the data folder easily
 """
 
 import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Point
 from collections import defaultdict
 import requests
 from typing import List
@@ -13,9 +15,6 @@ import numpy as np
 import re
 import glob
 import csv
-
-MI_LAT = [41.50, 47.50]
-MI_LONG = [-90.5, -82.5]
 
 class ETLConfig:
   def __init__(self, **kwargs):
@@ -137,23 +136,20 @@ class ETL:
 
     return station_df
     
-  def get_station_list(self, df: pd.DataFrame, lat: List[float], lon: List[float], US: bool = False) -> List[str]:
+# https://stackoverflow.com/questions/76089003/geopandas-checking-whether-point-is-inside-polygon
+  def get_station_list(self, df: pd.DataFrame, US: bool = False) -> List[str]:
     # df is the weather station dataframe created from txt file provided by NOAA
     # lat is a list of lattitude range (max length 2) with element 0 being the minimum and 1 being the max
     # lon is a list of longitude range (max length 2) with element 0 being the minimum and 1 being the max
     # set US to true to return only US listed weather stations
 
-    if len(lat) > 2:
-        return "Error you can only have 2 values for lattitude"
-    if len(lon) > 2:
-        return "Error you can only have 2 values for longitude"
-
-    station_df = df[
-        (df.lat >= lat[0])
-        & (df.lat <= lat[1])
-        & (df.long >= lon[0])
-        & (df.long <= lon[1])
-    ]
+    def in_miso(row):
+      point = Point(row.long, row.lat)
+      return gdf.contains(point).any()
+    
+    gdf = gpd.read_file(os.path.join(self.data_path, "miso.geojson"))
+    stations_in_miso = df.apply(in_miso, axis=1)
+    station_df = df[stations_in_miso]
 
     if US:
         station_df = station_df.loc[station_df["ID"].str.contains("US")]
@@ -318,7 +314,7 @@ class ETL:
   def generate_weather(self) -> None:
     print("  Getting Relevant Stations")
     station_df = self.get_station_df()
-    stations = self.get_station_list(station_df, MI_LAT, MI_LONG, True)
+    stations = self.get_station_list(station_df, True)
     print("  Combining Stations")
     weather_df = self.combine_stations(stations)
     print("  Filtering Weather")

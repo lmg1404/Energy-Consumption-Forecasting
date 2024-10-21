@@ -379,4 +379,3 @@ dependencies:
       - colorlog==6.8.2
       - optuna==4.0.0
       - skforecast==0.13.0
-prefix: /home/luismg0203/miniconda3/envs/forecasting

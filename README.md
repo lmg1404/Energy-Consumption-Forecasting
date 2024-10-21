@@ -11,6 +11,14 @@ energy consumption in the Michigan area.
   - Everything you need should be within the files with description BALANCE
 - [EIA Consumption](https://www.eia.gov/electricity/data/browser/#/topic/2?agg=2,0,1&fuel=f&geo=00004&sec=g&linechart=ELEC.CONS_TOT.COW-MI-99.M&columnchart=ELEC.CONS_TOT.COW-MI-99.M&map=ELEC.CONS_TOT.COW-MI-99.M&freq=M&start=200101&end=202406&ctype=linechart&ltype=pin&rtype=s&pin=&rse=0&maptype=0)
 
+**How to run**
+Documents under each supervised and unsupervised have their own .yml file.
+To run any run the command 
+1. `conda env create -f env-<name>.yml`
+2. `conda activate <env>` (forecasting or clustering)
+3. `jupyter notebook` 
+This was ran on WSL so a Linux OS is recommended for this.
+
 ## The `scripts` Module
 **ETL**
 - performs extract transform and load for the NOAA and EIA Monitoring data

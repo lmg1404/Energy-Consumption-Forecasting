@@ -1,3 +1,9 @@
+"""
+Handles the bayesian optimization object for XGBoost HP tuning.
+It was a huge eye sore on the notebook so it's better if it's here.
+Plus it's easier this way than copying and pasting into evaluation.
+"""
+
 from typing import Dict, Tuple
 import itertools
 import pandas as pd
@@ -13,6 +19,9 @@ np.random.seed(RANDOM_STATE)
 
 
 class BayesianOptimizationConfig:
+  """
+  Config object for BO, makes it easy to see where everything is.
+  """
   def __init__(self, **kwargs):
     for key, value in kwargs.items():
       setattr(self, key, value)
@@ -24,6 +33,10 @@ class BayesianOptimizationConfig:
 # source 2 https://pyro.ai/examples/bo.html
 # source 3 https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f
 class BayesianOptimization:
+    """
+    BO Object to tune, and methods prepended with _ is internally used.
+    All other should be used to see how the model behaved.
+    """
     def __init__(self, config: BayesianOptimizationConfig):
         self.hp_bounds: Dict[Tuple]    = config.hp_bounds
         self.search_space              = list(itertools.product(config.lags, config.differentiation))
@@ -97,6 +110,9 @@ class BayesianOptimization:
         return array
         
     def fit(self, n_iters: int):
+        """
+        Just fits the model as well as possible given lag and diff grid.
+        """
         space = tqdm(self.search_space, position=0, total=len(self.search_space), desc="HP Search")
         for lag, diff in space:
             searched_params, param_objs = None, None
@@ -135,6 +151,9 @@ class BayesianOptimization:
             self.gprs[(lag, diff)] = gpr
 
     def best_params(self):
+        """
+        Returns the best parameters, mean, and std found globally
+        """
         best = np.inf
         best_params = None
         best_lag = None
@@ -155,6 +174,9 @@ class BayesianOptimization:
             }
 
     def best_model(self):
+        """
+        returns a model ready to be trained
+        """
         params, reg_params, _ = self.best_params()
         forecaster = ForecasterAutoreg(
             regressor = XGBRegressor(**params, random_state=RANDOM_STATE),
@@ -162,13 +184,22 @@ class BayesianOptimization:
         )
         return forecaster
 
-    def gpr_(self, lag: int):
-        return self.gprs[lag]
+    def gpr_(self, lag: int, diff: int):
+        """
+        Returns a fully trained gaussian process regressor for a particular lag
+        """
+        return self.gprs[(lag, diff)]
 
-    def training_schedule(self, lag: int):
-        return self.searched_params[lag]
+    def training_schedule(self, lag: int, diff, int):
+        """
+        Returns the order the object searched parameters
+        """
+        return self.searched_params[(lag, diff)]
 
     def save(self, filename):
+        """
+        Saves to a pickle with a file name
+        """
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
     # -----------------------

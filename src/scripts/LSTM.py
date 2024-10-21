@@ -1,3 +1,9 @@
+"""
+Handles the LSTM objects in case we wanted to run it onto our computers.
+This was made on a Google Colab and was essentially copied and pasted to scripts.
+It's highly recommended that this is ran on an L4 instance rather than a computer.
+"""
+
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset

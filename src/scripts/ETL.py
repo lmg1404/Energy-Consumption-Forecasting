@@ -1,6 +1,9 @@
 """
 Object is to put in notebooks so you just do ETL with settings and run it
 Should put .csvs into the data folder easily
+
+If you run the object with DLYs you will need the untarred folder, and it will
+take a couple of minutes to run.
 """
 
 import pandas as pd

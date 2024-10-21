@@ -13,11 +13,12 @@ energy consumption in the Michigan area.
 
 **How to run**
 Documents under each supervised and unsupervised have their own .yml file.
-To run any run the command 
-1. `conda env create -f env-<name>.yml`
-2. `conda activate <env>` (forecasting or clustering)
-3. `jupyter notebook` 
 This was ran on WSL so a Linux OS is recommended for this.
+To run any run the command 
+1. `conda env create -f environment.yml`
+2. `conda activate forecasting`
+3. `jupyter notebook` 
+
 
 ## The `scripts` Module
 **ETL**
